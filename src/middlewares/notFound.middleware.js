@@ -5,5 +5,4 @@ function notFound(req, res, next) {
     path: req.originalUrl,
   });
 }
-
 module.exports = notFound;

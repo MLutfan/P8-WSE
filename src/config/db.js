@@ -12,9 +12,7 @@ async function connectDB() {
     logger.info("[DB] MongoDB connected");
   } catch (err) {
     logger.error({ err }, "[DB] MongoDB connection failed");
-    // JANGAN exit di langkah 1 agar server tetap jalan
     logger.warn("[DB] App tetap jalan tanpa DB (sementara).");
   }
 }
-
 module.exports = { connectDB };

@@ -11,7 +11,6 @@ const articlesRoutes = require("./routes/articles.routes");
 const swaggerUi = require("swagger-ui-express");
 const YAML = require("yamljs");
 const openapiSpec = YAML.load("./src/docs/openapi.yaml");
-const { generalLimiter } = require("./middlewares/rateLimit.middleware");
 
 const app = express();
 
@@ -20,39 +19,27 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.use(helmet());
 
-// Core parsers (batasi ukuran body agar tidak overload)
-app.use(express.json({ limit: "1mb" }));
-app.use(express.urlencoded({ extended: true, limit: "1mb" }));
-
-// Security hardening
-app.use(
-  cors({
-    origin: "*", // Ganti dengan domain spesifik jika sudah production
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization", "x-correlation-id"],
-  })
-);
-app.use(helmet());
-app.use(generalLimiter);
-
-// Observability
+// correlation id first
 app.use(correlationId);
+
+// structured http logger
 app.use(
   pinoHttp({
     logger,
     customProps: (req) => ({
       cid: req.correlationId,
-      userId: req.user?.id,
+      userId: req.user?.id, // nanti terisi setelah JWT aktif
     }),
   })
 );
 
-// Routes
+// routes
 app.use(systemRoutes);
 app.use("/api/articles", articlesRoutes);
+
+// docs
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(openapiSpec));
 
-// Error Handling
 app.use(notFound);
 app.use(errorHandler);
 

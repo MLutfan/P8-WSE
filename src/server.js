@@ -9,5 +9,4 @@ async function bootstrap() {
     logger.info({ port }, "Server running");
   });
 }
-
 bootstrap();

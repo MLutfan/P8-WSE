@@ -16,5 +16,4 @@ function errorHandler(err, req, res, next) {
     cid: req.correlationId,
   });
 }
-
 module.exports = errorHandler;

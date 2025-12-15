@@ -11,19 +11,20 @@ const ArticleSchema = new mongoose.Schema(
       enum: ["draft", "published"],
       default: "draft",
     },
-    author: { type: String }, // Nanti diisi saat Auth aktif
+    author: { type: String }, // akan diisi email/id user nanti
   },
   { timestamps: true }
 );
 
-// Hook untuk otomatis buat slug dari title sebelum simpan
-ArticleSchema.pre("validate", function () {
+// Hook untuk membuat slug otomatis dari title sebelum validasi
+ArticleSchema.pre("validate", function (next) {
   if (this.title) {
     this.slug = this.title
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)+/g, "");
+      .replace(/[^a-z0-9]+/g, "-") // ganti karakter aneh dengan dash
+      .replace(/(^-|-$)+/g, "");   // hapus dash di awal/akhir
   }
+  next(); // PENTING: panggil next() agar proses lanjut
 });
 
 const ArticleModel = mongoose.model("Article", ArticleSchema);
