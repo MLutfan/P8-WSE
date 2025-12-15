@@ -2,35 +2,313 @@ openapi: 3.1.0
 info:
   title: WSE P8 Secure Articles API
   version: 1.0.0
-  description: Advanced RESTful CRUD API with JWT, Hardening, Observability.
+  description: >
+    Advanced RESTful CRUD API with JWT Authentication, Refresh Tokens, RBAC,
+    Hardening, and Observability.
 servers:
   - url: http://localhost:3000
-paths:
-  /health:
-    get:
-      summary: Health check
-      responses:
-        "200":
-          description: Service healthy
-  /api/articles:
-    get:
-      summary: List articles
-      parameters:
-        - in: query
-          name: page
-          schema: { type: integer, minimum: 1 }
-        - in: query
-          name: limit
-          schema: { type: integer, minimum: 1, maximum: 100 }
-        - in: query
-          name: status
-          schema: { type: string, enum: [draft, published] }
-      responses:
-        "200":
-          description: List of articles (stub)
+tags:
+  - name: Auth
+    description: Authentication & authorization endpoints
+  - name: Articles
+    description: CRUD Articles with RBAC
+  - name: System
+    description: System & observability endpoints
+
+# KOMPONEN KEAMANAN & SCHEMA
 components:
   securitySchemes:
     BearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+
+  schemas:
+    # --- AUTH SCHEMAS ---
+    User:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string }
+        role:
+          type: string
+          enum: [user, admin]
+    RegisterRequest:
+      type: object
+      required: [name, email, password]
+      properties:
+        name: { type: string, minLength: 3 }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 6 }
+        role:
+          type: string
+          enum: [user, admin]
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+    LoginResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data:
+          type: object
+          properties:
+            accessToken: { type: string }
+            refreshToken: { type: string }
+            user:
+              $ref: "#/components/schemas/User"
+    RefreshRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken: { type: string }
+
+    # --- ARTICLE SCHEMAS ---
+    Article:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        slug: { type: string }
+        content: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        status:
+          type: string
+          enum: [draft, published]
+        author: { type: string }
+        authorId: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    ArticleCreate:
+      type: object
+      required: [title, content]
+      properties:
+        title: { type: string, minLength: 3, maxLength: 120 }
+        content: { type: string, minLength: 10 }
+        tags:
+          type: array
+          items: { type: string }
+        status:
+          type: string
+          enum: [draft, published]
+          default: draft
+    ArticleUpdate:
+      type: object
+      properties:
+        title: { type: string }
+        content: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        status:
+          type: string
+          enum: [draft, published]
+    ArticleResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data:
+          $ref: "#/components/schemas/Article"
+    ArticleListResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data:
+          type: object
+          properties:
+            page: { type: integer }
+            limit: { type: integer }
+            total: { type: integer }
+            results:
+              type: array
+              items: { $ref: "#/components/schemas/Article" }
+
+paths:
+  # --- SYSTEM ---
+  /health:
+    get:
+      summary: Health check
+      tags: [System]
+      responses:
+        "200":
+          description: Service healthy
+
+  # --- AUTH ---
+  /api/auth/register:
+    post:
+      summary: Register new user
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: Registered successfully
+  /api/auth/login:
+    post:
+      summary: Login user
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+  /api/auth/refresh:
+    post:
+      summary: Refresh access token
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshRequest"
+      responses:
+        "200":
+          description: New tokens issued
+  /api/auth/logout:
+    post:
+      summary: Logout (invalidate refresh token)
+      tags: [Auth]
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Logged out
+  /api/auth/me:
+    get:
+      summary: Get current user profile
+      tags: [Auth]
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: User profile returned
+
+  # --- ARTICLES ---
+  /api/articles:
+    get:
+      summary: List articles (pagination, filter, search, sort)
+      tags: [Articles]
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [draft, published]
+        - in: query
+          name: tag
+          schema:
+            type: string
+        - in: query
+          name: q
+          schema:
+            type: string
+        - in: query
+          name: sortBy
+          schema:
+            type: string
+            enum: [createdAt, title]
+            default: createdAt
+        - in: query
+          name: order
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        "200":
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArticleListResponse"
+    post:
+      summary: Create a new article
+      tags: [Articles]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ArticleCreate"
+      responses:
+        "201":
+          description: Article created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArticleResponse"
+
+  /api/articles/{id}:
+    put:
+      summary: Update an article by id
+      tags: [Articles]
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ArticleUpdate"
+      responses:
+        "200":
+          description: Article updated
+        "404":
+          description: Article not found
+    delete:
+      summary: Delete an article by id (admin only)
+      tags: [Articles]
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted successfully
+        "404":
+          description: Article not found
