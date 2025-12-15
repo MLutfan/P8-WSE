@@ -2,8 +2,8 @@ function validate(schema) {
   return (req, res, next) => {
     const options = {
       abortEarly: false, // Tampilkan semua error, jangan berhenti di error pertama
-      allowUnknown: true, // Izinkan field lain di header/query yang tidak dicek
-      stripUnknown: true, // Hapus field di body yang tidak ada di schema (bersih-bersih)
+      allowUnknown: true, // Izinkan field lain di header/objek yang tidak dicek
+      stripUnknown: true, // Hapus field yang tidak didefinisikan di schema (bersih-bersih)
     };
 
     const { error, value } = schema.validate(
@@ -20,12 +20,12 @@ function validate(schema) {
       });
     }
 
-    // Update req dengan data yang sudah dibersihkan/divalidasi
-    if (value.body) Object.assign(req.body, value.body);
-    if (value.params) Object.assign(req.params, value.params);
-    if (value.query) Object.assign(req.query, value.query);
+    // Update req dengan data yang sudah dibersihkan/dikonversi
+    if (value.body) req.body = value.body;
+    if (value.params) req.params = value.params;
+    if (value.query) req.query = value.query;
 
-    return next();
+    next();
   };
 }
 

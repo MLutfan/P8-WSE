@@ -1,38 +1,49 @@
 const Article = require("../repositories/articles.repo");
 
 async function getAllArticles(query) {
-  // 1. Pagination Logic
   const page = Number(query.page || 1);
   const limit = Number(query.limit || 10);
   const skip = (page - 1) * limit;
 
-  // 2. Filter Logic
   const filter = {};
   if (query.status) filter.status = query.status;
   if (query.tag) filter.tags = query.tag;
 
-  // 3. Query Database
-  const articles = await Article.find(filter)
+  // Fitur Pencarian (Search)
+  if (query.q) {
+    filter.$or = [
+      { title: { $regex: query.q, $options: "i" } }, // case-insensitive
+      { content: { $regex: query.q, $options: "i" } },
+    ];
+  }
+
+  // Fitur Sorting
+  const sortBy = query.sortBy || "createdAt";
+  const order = query.order === "asc" ? 1 : -1;
+
+  const results = await Article.find(filter)
     .skip(skip)
     .limit(limit)
-    .sort({ createdAt: -1 }); // Urutkan terbaru
+    .sort({ [sortBy]: order });
 
   const total = await Article.countDocuments(filter);
 
-  return {
-    page,
-    limit,
-    total,
-    results: articles,
-  };
+  return { page, limit, total, results };
 }
 
+// Fungsi Update
+async function updateArticle(id, data) {
+  const updated = await Article.findByIdAndUpdate(id, data, {
+    new: true, // Kembalikan data setelah diupdate
+    runValidators: true, // Jalankan validasi schema mongo
+  });
+  return updated;
+}
+
+// Fungsi Create (tetap)
 async function createArticle(data) {
   const article = new Article(data);
   return await article.save();
 }
 
-module.exports = {
-  getAllArticles,
-  createArticle,
-};
+module.exports = { getAllArticles, createArticle, updateArticle };

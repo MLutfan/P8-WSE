@@ -11,6 +11,8 @@ const articlesRoutes = require("./routes/articles.routes");
 const swaggerUi = require("swagger-ui-express");
 const YAML = require("yamljs");
 const openapiSpec = YAML.load("./src/docs/openapi.yaml");
+const { generalLimiter } = require("./middlewares/rateLimit.middleware");
+const authRoutes = require("./routes/auth.routes");
 
 const app = express();
 
@@ -35,6 +37,7 @@ app.use(
 
 // routes
 app.use(systemRoutes);
+app.use("/api/auth", authRoutes);
 app.use("/api/articles", articlesRoutes);
 
 // docs
@@ -42,5 +45,16 @@ app.use("/docs", swaggerUi.serve, swaggerUi.setup(openapiSpec));
 
 app.use(notFound);
 app.use(errorHandler);
+
+// === Security Hardening ===
+app.use(
+  cors({
+    origin: "*", // Sementara allow all, nanti diperketat
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization", "x-correlation-id"],
+  })
+);
+app.use(helmet());
+app.use(generalLimiter);
 
 module.exports = app;

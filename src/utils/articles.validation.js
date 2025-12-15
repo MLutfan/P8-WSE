@@ -33,7 +33,7 @@ const listArticlesSchema = Joi.object({
     limit: Joi.number().integer().min(1).max(100).default(10),
     status: Joi.string().valid("draft", "published").optional(),
     tag: Joi.string().optional(),
-    q: Joi.string().min(1).max(100).optional(), // Search keyword
+    q: Joi.string().min(1).max(100).optional(), // Keyword pencarian
     sortBy: Joi.string().valid("createdAt", "title").default("createdAt"),
     order: Joi.string().valid("asc", "desc").default("desc"),
   }),
