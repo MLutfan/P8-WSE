@@ -32,13 +32,33 @@ async function getAllArticles(query) {
 }
 
 // Fungsi Update
-async function updateArticle(id, data) {
-  const updated = await Article.findByIdAndUpdate(id, data, {
-    new: true, // Kembalikan data setelah diupdate
-    runValidators: true, // Jalankan validasi schema mongo
-  });
-  return updated;
+async function updateArticle(id, data, user) {
+  const article = await Article.findById(id);
+  if (!article) return null;
+
+  const isOwner = article.authorId === user.id;
+  const isAdmin = user.role === "admin";
+
+  if (!isOwner && !isAdmin) {
+    const err = new Error("Forbidden: not owner");
+    err.statusCode = 403;
+    throw err;
+  }
+
+  Object.assign(article, data);
+  return await article.save();
 }
+
+async function deleteArticle(id) {
+  return await Article.findByIdAndDelete(id);
+}
+
+module.exports = { 
+  getAllArticles, 
+  createArticle, 
+  updateArticle, 
+  deleteArticle 
+};
 
 // Fungsi Create (tetap)
 async function createArticle(data) {
