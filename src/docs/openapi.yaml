@@ -1,0 +1,20 @@
+openapi: 3.1.0
+info:
+  title: WSE P8 Secure Articles API
+  version: 1.0.0
+  description: Advanced RESTful CRUD API with JWT, Hardening, Observability.
+servers:
+  - url: http://localhost:3000
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: service healthy
+  /api/articles:
+    get:
+      summary: List articles
+      responses:
+        "200":
+          description: list of articles (stub)
